@@ -27,6 +27,9 @@ public class TRP_DP{
         
         numStops = customers.numCusts;
         
+        
+        
+      //This code all works if number of Customers is greater than 2
         // Set up all power sets used later
         //ReDim allPS.indexSet(0 To numStops)
         int[] indexArray = new int[numStops];
@@ -55,7 +58,7 @@ public class TRP_DP{
         boolean adding;
         maxReturn temp;
 
-        //Call MeanVars(False)
+        
         int numCombs;
         for(i=0;i<=numStops;i++){
             numCombs = 0;
@@ -72,12 +75,15 @@ public class TRP_DP{
 						//costMatrix[i][j].cost = this.serviceLevel(customers,j, tempTime);
 						costMatrix[i][j].recentVisit = j;
 						costMatrix[i][j].visited[0] = j;
+						costMatrix[i][j].cost = this.serviceLevel(customers, j, costMatrix[i][j].time);
 					}
+					// cannot possibly visit customer so infeasible total solution
 					else{
 						costMatrix[i][j].cost = 0;
 						costMatrix[i][j].recentVisit = 0;
+						costMatrix[i][j].abandoned = new int[1];
+						costMatrix[i][j].abandoned[0] = j;
 					}
-                    costMatrix[i][j].cost = this.serviceLevel(customers, j, costMatrix[i][j].time);
                     costMatrix[i][j].S=new int[1];
                     costMatrix[i][j].S[0] = 0;
                     costMatrix[i][j].size = 0;
@@ -90,6 +96,13 @@ public class TRP_DP{
             /*if have previous costs then need to shift next node to S set and add unused
             this effectively gets all costs associated with sets |S|= i*/
             else{
+            	
+                if(numStops == 1){
+                	numStops = 1;
+                	break;
+                }
+                
+                
             	// same set S
                 for(j = 0;j<=index;j++){
                     // given that all sets S have same binary total then get new sets from individual sets
@@ -102,6 +115,10 @@ public class TRP_DP{
 	                            if(adding){
 	                                // when adding, simply shift existing nextNode to S
 	                                // increase indexing appropriate for new size
+	                            	
+	                            	
+	                            	
+	                            	
 	                                tempNode = costMatrix[j][k].nextNode;
 	                                newIndex = (int) (j + Math.pow(2, tempNode-1));
 	                                // next node is now the "fresh" node
@@ -112,6 +129,10 @@ public class TRP_DP{
 	                                costMatrix[newIndex][m].index = newIndex;
 	                                // cost of this stage is the min of last leg + rest of node
 	                               
+	                                if(newIndex==96 && m == 2){
+	                                	newIndex=96;
+	                                }
+	                                
 	                                temp = bestReturn(costMatrix[newIndex][m],customers);
 	                                costMatrix[newIndex][m].cost = temp.returns[0];
 	                                costMatrix[newIndex][m].previous = (int) temp.returns[1];
@@ -158,7 +179,7 @@ public class TRP_DP{
 	        visited = costMatrix[(int) (index - Math.pow(2, i-1))][i].visited;
 	        //abandoned = costMatrix[(int) (index - Math.pow(2, i-1))][i].abandoned
 	        if(costMatrix[(int) (index - Math.pow(2, i-1))][i].recentVisit == i){
-	                time = costMatrix[(int) (index - Math.pow(2, i-1))][i].time + customers.distances[i][0]+ serviceTime;
+	                time = costMatrix[(int) (index - Math.pow(2, i-1))][i].time + customers.distances[i][0]+ customers.customers[i].serviceTime;
 	        }        		
 	        else{
 	                time = costMatrix[(int) (index - Math.pow(2, i-1))][i].time + customers.distances[costMatrix[(int) (index - Math.pow(2, i-1))][i].recentVisit][0];
@@ -184,70 +205,93 @@ public class TRP_DP{
         // given that the best solution has lost customers to abandonment
         //numStops = numStops // - UBound(costMatrix[index][0].abandoned)
         int reduceIndex=0;
-        reduceIndex = costMatrix[index][0].visited.length;
         
-        k = 0;
-        boolean out;
-        abandoned = new int[numStops - reduceIndex];
-        for(i=1; i<=numStops; i++){
-            out = true;
-            for(j=0; j<reduceIndex; j++){
-                if(i == costMatrix[index][0].visited[j]){
-                    out = false;
-                    break;
+        
+        // infeasible so abandon all customers
+        if(costMatrix[index][0].visited == null){
+        	reduceIndex = 0;
+        	abandoned = new int[numStops - reduceIndex];
+        	for(i=1; i<=numStops; i++){
+        		abandoned[i-1]=i;
+        	}
+        	this.routing = new int[1];
+        	this.routing[0]=0;
+        	this.benefits = new float[1];
+        	this.benefits[0]=0;
+        	this.times = new float[1];
+        	this.times[0]=customers.startTime;
+        	
+        }
+        // at least 1 feasible customer
+        else{
+        	reduceIndex = costMatrix[index][0].visited.length;
+        	k = 0;
+            boolean out;
+            abandoned = new int[numStops - reduceIndex];
+            for(i=1; i<=numStops; i++){
+                out = true;
+                for(j=0; j<reduceIndex; j++){
+                    if(i == costMatrix[index][0].visited[j]){
+                        out = false;
+                        break;
+                    }
+                }
+                if(out == true){
+                    abandoned[k] = i;
+                    k++;
                 }
             }
-            if(out == true){
-                abandoned[k] = i;
-                k++;
+            reduceIndex = 0;
+            for(i=0; i<abandoned.length; i++){
+            	reduceIndex = (int) (reduceIndex + Math.pow(2, abandoned[i] - 1));
             }
-        }
-        
-        reduceIndex = 0;
-        for(i=0; i<abandoned.length; i++){
-        	reduceIndex = (int) (reduceIndex + Math.pow(2, abandoned[i] - 1));
-        }
-        
-        
-        int numStopsAban; 
-        numStopsAban = numStops - abandoned.length;
-        this.routing = new int[numStopsAban+2];
-        float[] prevCosts = new float[numStopsAban+2];
-        float[] times = new float[numStopsAban+2];
-        this.routing[numStopsAban] = 0;
-        prevCosts[numStopsAban+1]= maxCost;
-        times[numStopsAban+1] = minTime;
-        
-        last = costMatrix[index][0].previous;
-        
-        
-        tempIndex = (int) (index - Math.pow(2, last-1));
-        tempIndex = tempIndex - reduceIndex;
-        
-        i = numStopsAban;
-        do {
-        	this.routing[i] = last;
-            prevCosts[i] = costMatrix[tempIndex][last].cost;
-            times[i] = costMatrix[tempIndex][last].time;
             
-            last = costMatrix[tempIndex][last].previous;
-            tempIndex = (int) (tempIndex - Math.pow(2, last - 1));
-            i--;
-        } while (last!=0);
-        
-        this.routing[i] = last;
-        this.abandoned = abandoned;
-        // translate from indices to actual customer numbers before returning
-        for(i=1;i<this.routing.length-1;i++){
-        	this.routing[i]= customers.indices[this.routing[i]-1];
+          
+            int numStopsAban; 
+            numStopsAban = numStops - abandoned.length;
+            this.routing = new int[numStopsAban+2];
+            float[] prevCosts = new float[numStopsAban+2];
+            float[] times = new float[numStopsAban+2];
+            this.routing[numStopsAban] = 0;
+            prevCosts[numStopsAban+1]= maxCost;
+            times[numStopsAban+1] = minTime;
+            
+            last = costMatrix[index][0].previous;
+            
+            
+            tempIndex = (int) (index - Math.pow(2, last-1));
+            tempIndex = tempIndex - reduceIndex;
+            
+            i = numStopsAban;
+            do {
+            	this.routing[i] = last;
+                prevCosts[i] = costMatrix[tempIndex][last].cost;
+                times[i] = costMatrix[tempIndex][last].time;
+                
+                last = costMatrix[tempIndex][last].previous;
+                tempIndex = (int) (tempIndex - Math.pow(2, last - 1));
+                i--;
+            } while (last!=0);
+            
+            times[i] = customers.startTime;
+            this.routing[i] = last;
+            this.abandoned = abandoned;
+            // translate from indices to actual customer numbers before returning
+            for(i=1;i<this.routing.length-1;i++){
+            	this.routing[i]= customers.indices[this.routing[i]-1];
+            }
+            for(i=0;i<this.abandoned.length;i++){
+            	this.abandoned[i] = customers.indices[this.abandoned[i]-1];
+            }
+            this.benefits=prevCosts;
+            this.times=times;
         }
-        for(i=0;i<this.abandoned.length;i++){
-        	this.abandoned[i] = customers.indices[this.abandoned[i]-1];
-        }
+         
         
-        this.benefits=prevCosts;
-        times[i] = customers.startTime;
-        this.times=times;
+        
+        
+        
+        
         
 
         /*//Set costs() = Nothing
@@ -297,7 +341,7 @@ public class TRP_DP{
 	            delaying = customers.customers[customer].early;
 	    }
 	    //shrink late window by forcing service to be done within window
-	    else if(time + customers.distances[customer][previous] + serviceTime > customers.customers[customer].late){
+	    else if(time + customers.distances[customer][previous] + customers.customers[customer].serviceTime > customers.customers[customer].late){
 	    	delaying = time;
 	    }
 	    else{
@@ -356,6 +400,7 @@ public class TRP_DP{
 	    bestReturn.returns[2] = (float) 1E+32;
 	    // start at second element to avoid depot 0
 	    for(i=1; i < x.S.length; i++){
+	    	
             // back track in memoization to find S\{i} ending at i
             tempIndex = (int) (index - Math.pow(2, x.S[i] - 1));
 //                If x.visited(i) = 4 And x.nextNode = 5 Then
@@ -375,7 +420,7 @@ public class TRP_DP{
                 size=0;
              // get time that started visit at last non-abandoned customer
 				if(x.S[i] == costMatrix[newIndex][x.S[i]].recentVisit){
-					tempTime = costMatrix[newIndex][x.S[i]].time + serviceTime;
+					tempTime = costMatrix[newIndex][x.S[i]].time + cust.customers[x.S[i]].serviceTime;
 				}
 				else{
 					tempTime = costMatrix[newIndex][x.S[i]].time;
@@ -454,7 +499,7 @@ public class TRP_DP{
 				            }
 				         // get time that started visit at last non-abandoned customer
 							if(x.S[i] == costMatrix[newIndex][x.S[i]].recentVisit){
-							        tempTime = costMatrix[newIndex][x.S[i]].time + serviceTime;
+							        tempTime = costMatrix[newIndex][x.S[i]].time + cust.customers[x.S[i]].serviceTime;
 							}
 							else{
 							        tempTime = costMatrix[newIndex][x.S[i]].time;

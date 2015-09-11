@@ -9,6 +9,7 @@ public class Customer {
 	private float yCoord;
 	public float early;
 	public float late;
+	public float serviceTime = (float) 0.5;
 	public static final int upperCoord = 2;
 	public static final int lowerCoord = 0;
 

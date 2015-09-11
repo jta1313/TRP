@@ -36,18 +36,47 @@ public class Main {
 			
 			//read in data from input file
 			customers.InputData(infileName);
-			currentCustomers = new ArrayList<CustomerList>();
-			currentCustomers.add(customers);
 			
-			// find best route for first truck (may be all customers)
 			TRP_DP problem = new TRP_DP();
+			
+			//root out infeasible customers
+			int i=0,j=0,k=0;
+			int[] feasible = new int[customers.numCusts];
+			int[] infeasible = new int[customers.numCusts];
+			for(i=1; i<=customers.numCusts; i++){
+				if(customers.startTime+customers.distances[0][i]+customers.customers[i].serviceTime <= customers.customers[i].late){
+					feasible[k]=i;
+					k++;
+				}
+				else{
+					infeasible[j]=i;
+					j++;
+				}
+			}
+			
+			infeasible = Arrays.copyOf(infeasible, j);
+			currentCustomers = new ArrayList<CustomerList>();
+			if(j>0){
+				CustomerList reducedCusts = new CustomerList();
+				reducedCusts = customers.reducedCustomers(Arrays.copyOf(feasible, k));
+				currentCustomers.add(reducedCusts);
+			}
+			else{
+				currentCustomers.add(customers);
+			}
+
+			// find best route for first truck (may be all customers)
+			
 			problem.MainTRP(currentCustomers.get(0));
 			
 			solutions = new ArrayList<TRP_DP>();
 			solutions.add(problem);
 			// find remaining routes for subsequent trucks until can meet all demand
-			int i=1;
-			while(problem.abandoned.length != 0){
+			
+			// keep adding new truck routes until no more gain in service level (benefit)
+			i=0;
+			while(problem.benefit != 0 && problem.abandoned != null && problem.abandoned.length !=0){
+				i++;
 				CustomerList reducedCusts = new CustomerList();
 				reducedCusts = customers.reducedCustomers(problem.abandoned);
 				currentCustomers.add(reducedCusts);
@@ -56,7 +85,7 @@ public class Main {
 				solutions.add(problem);
 			}
 			
-			print(infileName,solutions);
+			print(infileName,solutions,infeasible);
 			//problem.print(infileName);
 			//customers.generateList(numCusts,startTime,endTime);
 		}
@@ -82,21 +111,27 @@ public class Main {
 	 * @param writer BufferedWriter where output is going
 	 * @throws IOException
 	 */
-	private static void print(String outfileName, ArrayList<TRP_DP> solutions) throws IOException{
+	private static void print(String outfileName, ArrayList<TRP_DP> solutions, int[] infs) throws IOException{
 		BufferedWriter writer = Files.newBufferedWriter(FileSystems.getDefault().
 	    		getPath(System.getProperty("user.dir")+ "/src/output", outfileName));
 		String temp = "";
 		int i, count;
 		count = 0;
+		// solutions
 		for(TRP_DP problem: solutions){
 			count++;
-			temp = temp.concat(String.format("Truck #%d%n%n",count));
-			for(i=0; i<problem.routing.length; i++){
-				temp = temp.concat(String.format("%d %f %f%n",problem.routing[i],problem.benefits[i],problem.times[i]));
+				temp = temp.concat(String.format("Truck #%d%n%n",count));
+				for(i=0; i<problem.routing.length; i++){
+					temp = temp.concat(String.format("%d %f %f%n",problem.routing[i],problem.benefits[i],problem.times[i]));
+				
 			}
-			temp = temp.concat(String.format("%n%n"));
+				temp = temp.concat(String.format("%n%n"));
 		}
-		
+		// infeasible
+		temp = temp.concat(String.format("INFEASIBLE CUSTOMERS%n%n"));
+		for(i=0; i<infs.length; i++){
+			temp = temp.concat(String.format("%d",infs[i]));
+		}
 		writer.write(temp);
 		writer.close();
 	}
