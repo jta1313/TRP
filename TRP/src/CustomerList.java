@@ -9,6 +9,7 @@ import java.nio.file.Files;
  *
  */
 public class CustomerList {
+	public int[] indices;
 	public Customer[] customers;
 	public float[][] distances;
 	public int numCusts;
@@ -56,6 +57,7 @@ public class CustomerList {
 		maxNum = (int)Math.ceil((float)numCusts/(float)this.numWindows);
 		
 		int[] custInWindows = new int[this.numWindows];
+		
 		int window;
 		boolean goodWindow;
 		for(i=1; i<=numCusts;i++){
@@ -107,6 +109,10 @@ public class CustomerList {
 			else if (lineNum==1){
 				this.numCusts = Integer.parseInt(entry);
 				this.customers = new Customer[this.numCusts+1];
+				this.indices = new int[this.numCusts];
+				for(i=1;i<=numCusts;i++){
+					this.indices[i-1]=i;
+				}
 				distances = new float[this.numCusts+1][this.numCusts+1];
 			}
 			// second line is daily start time
@@ -135,5 +141,36 @@ public class CustomerList {
 			}
 			else if(breaks == 2){break;}
 		}
+	}
+	
+	/** method to reduce the number of customers in list - notably used when finding greedy minimum # trucks
+	 * @param indices need new customer list (by full indexing)
+	 * @return the reduced customer list
+	 */
+	public CustomerList reducedCustomers(int[] indices){
+		CustomerList tempCustList= new CustomerList();
+		int i, j;
+		
+		tempCustList.indices=indices;
+		tempCustList.distances = new float[indices.length+1][indices.length+1];
+		tempCustList.numCusts = indices.length;
+		tempCustList.numWindows=this.numWindows;
+		tempCustList.startTime=this.startTime;
+		tempCustList.endTime=this.endTime;
+		tempCustList.customers=new Customer[indices.length+1];
+		
+		// get submatrix of distances - first row with depot is not in the indices so slightly different
+		tempCustList.distances[0][0]=0;
+		for(i=1;i<= tempCustList.numCusts;i++){
+			tempCustList.distances[0][i]=this.distances[0][indices[i-1]];
+			tempCustList.distances[i][0]=this.distances[indices[i-1]][0];
+			
+			if(i >=1){tempCustList.customers[i] = this.customers[indices[i-1]];}
+			for(j=1;j<= tempCustList.numCusts;j++){
+				tempCustList.distances[i][j]=this.distances[indices[i-1]][indices[j-1]];
+				tempCustList.distances[j][i]=this.distances[indices[j-1]][indices[i-1]];
+			}
+		}
+		return tempCustList;
 	}
 }

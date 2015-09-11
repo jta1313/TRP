@@ -13,6 +13,7 @@ public class TRP_DP{
 	private float serviceTime = (float)0.5;
 	public float benefit;
 	public int[] routing;
+	public int[] abandoned;
 	public float[] benefits, times;
 	public PowerSet custIndex = new PowerSet();
 	
@@ -235,9 +236,19 @@ public class TRP_DP{
         } while (last!=0);
         
         this.routing[i] = last;
+        this.abandoned = abandoned;
+        // translate from indices to actual customer numbers before returning
+        for(i=1;i<this.routing.length-1;i++){
+        	this.routing[i]= customers.indices[this.routing[i]-1];
+        }
+        for(i=0;i<this.abandoned.length;i++){
+        	this.abandoned[i] = customers.indices[this.abandoned[i]-1];
+        }
+        
         this.benefits=prevCosts;
         times[i] = customers.startTime;
         this.times=times;
+        
 
         /*//Set costs() = Nothing
         MainTRP_DP.benefit = costMatrix[index][0].cost
