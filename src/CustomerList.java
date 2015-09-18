@@ -162,10 +162,12 @@ public class CustomerList {
 		// get submatrix of distances - first row with depot is not in the indices so slightly different
 		tempCustList.distances[0][0]=0;
 		for(i=1;i<= tempCustList.numCusts;i++){
+			// depot distances
 			tempCustList.distances[0][i]=this.distances[0][indices[i-1]];
 			tempCustList.distances[i][0]=this.distances[indices[i-1]][0];
 			
 			if(i >=1){tempCustList.customers[i] = this.customers[indices[i-1]];}
+			// customer to customer distances
 			for(j=1;j<= tempCustList.numCusts;j++){
 				tempCustList.distances[i][j]=this.distances[indices[i-1]][indices[j-1]];
 				tempCustList.distances[j][i]=this.distances[indices[j-1]][indices[i-1]];

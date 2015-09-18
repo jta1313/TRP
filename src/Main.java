@@ -56,11 +56,11 @@ public class Main {
 			
 			infeasible = Arrays.copyOf(infeasible, j);
 			currentCustomers = new ArrayList<CustomerList>();
+			// if any infeasible, then reduced size of customer list appropriately
 			if(j>0){
-				CustomerList reducedCusts = new CustomerList();
-				reducedCusts = customers.reducedCustomers(Arrays.copyOf(feasible, k));
-				currentCustomers.add(reducedCusts);
+				currentCustomers.add(customers.reducedCustomers(Arrays.copyOf(feasible, k)));
 			}
+			// otherwise just use original customers CustomerList
 			else{
 				currentCustomers.add(customers);
 			}
@@ -69,7 +69,7 @@ public class Main {
 			
 			problem.MainTRP(currentCustomers.get(0));
 			
-			solutions = new ArrayList<TRP_DP>();
+			/*solutions = new ArrayList<TRP_DP>();
 			solutions.add(problem);
 			// find remaining routes for subsequent trucks until can meet all demand
 			
@@ -83,9 +83,9 @@ public class Main {
 				problem = new TRP_DP();
 				problem.MainTRP(currentCustomers.get(i));
 				solutions.add(problem);
-			}
+			}*/
 			
-			print(infileName,solutions,infeasible);
+			print(infileName,problem.solutionSet,infeasible);
 			//problem.print(infileName);
 			//customers.generateList(numCusts,startTime,endTime);
 		}
@@ -111,18 +111,18 @@ public class Main {
 	 * @param writer BufferedWriter where output is going
 	 * @throws IOException
 	 */
-	private static void print(String outfileName, ArrayList<TRP_DP> solutions, int[] infs) throws IOException{
+	private static void print(String outfileName, ArrayList<bestRoute> solutions, int[] infs) throws IOException{
 		BufferedWriter writer = Files.newBufferedWriter(FileSystems.getDefault().
 	    		getPath(System.getProperty("user.dir")+ "/src/output", outfileName));
 		String temp = "";
 		int i, count;
 		count = 0;
 		// solutions
-		for(TRP_DP problem: solutions){
+		for(bestRoute singleTruck: solutions){
 			count++;
 				temp = temp.concat(String.format("Truck #%d%n%n",count));
-				for(i=0; i<problem.routing.length; i++){
-					temp = temp.concat(String.format("%d %f %f%n",problem.routing[i],problem.benefits[i],problem.times[i]));
+				for(i=0; i<singleTruck.routing.length; i++){
+					temp = temp.concat(String.format("%d %f %f%n",singleTruck.routing[i],singleTruck.benefits[i],singleTruck.times[i]));
 				
 			}
 				temp = temp.concat(String.format("%n%n"));
